@@ -30,8 +30,7 @@ async function fetchQuotesFromServer() {
     if (!response.ok) throw new Error('Server error');
     return await response.json();
   } catch (error) {
-    console.error('Fetch failed:', error);
-    showNotification('Sync failed: ' + error.message, true);
+    showNotification('Failed to fetch from server: ' + error.message, true);
     return [];
   }
 }
@@ -40,34 +39,38 @@ async function postQuoteToServer(quote) {
   try {
     const response = await fetch(SERVER_URL, {
       method: 'POST',
-      body: JSON.stringify(quote),
+      body: JSON.stringify({
+        title: quote.text,
+        body: quote.category,
+        userId: 1
+      }),
       headers: {
-        'Content-type': 'application/json; charset=UTF-8',
-      },
+        'Content-Type': 'application/json'
+      }
     });
     return await response.json();
   } catch (error) {
-    console.error('Post failed:', error);
+    showNotification('Failed to post to server: ' + error.message, true);
     return null;
   }
 }
 
 async function syncQuotes() {
-  const serverData = await fetchQuotesFromServer();
-  const serverQuotes = serverData.map(post => ({
+  const serverQuotes = await fetchQuotesFromServer();
+  const formattedServerQuotes = serverQuotes.map(post => ({
     text: post.title,
-    category: 'server',
+    category: post.body || 'server',
     id: post.id,
     serverVersion: true
   }));
 
   const localQuotes = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  const mergedQuotes = mergeQuotes(localQuotes, serverQuotes);
+  const mergedQuotes = mergeQuotes(localQuotes, formattedServerQuotes);
 
   if (JSON.stringify(quotes) !== JSON.stringify(mergedQuotes)) {
     quotes = mergedQuotes;
     saveQuotes();
-    showNotification('Data updated from server');
+    showNotification('Synced with server - ' + new Date().toLocaleTimeString());
     showRandomQuote();
   }
 }
@@ -75,7 +78,10 @@ async function syncQuotes() {
 function mergeQuotes(localQuotes, serverQuotes) {
   const merged = [...serverQuotes];
   localQuotes.forEach(localQuote => {
-    if (!serverQuotes.some(serverQuote => serverQuote.id === localQuote.id)) {
+    if (!serverQuotes.some(serverQuote => 
+      serverQuote.text === localQuote.text && 
+      serverQuote.category === localQuote.category
+    )) {
       merged.push(localQuote);
     }
   });
