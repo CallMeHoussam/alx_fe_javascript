@@ -72,22 +72,24 @@ function addQuote() {
 }
 
 function exportToJson() {
-  const dataStr = JSON.stringify(quotes, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-  const exportFileDefaultName = 'quotes.json';
-  
-  const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
-  linkElement.setAttribute('download', exportFileDefaultName);
-  linkElement.click();
+  const data = JSON.stringify(quotes, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'quotes.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function importFromJsonFile(event) {
   const file = event.target.files[0];
   if (!file) return;
-  
-  const fileReader = new FileReader();
-  fileReader.onload = function(e) {
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
     try {
       const importedQuotes = JSON.parse(e.target.result);
       if (Array.isArray(importedQuotes)) {
@@ -103,17 +105,7 @@ function importFromJsonFile(event) {
     }
     event.target.value = '';
   };
-  fileReader.readAsText(file);
-}
-
-function clearStorage() {
-  if (confirm('Are you sure you want to clear all quotes and reset to default?')) {
-    localStorage.removeItem(STORAGE_KEY);
-    sessionStorage.clear();
-    loadQuotes();
-    showRandomQuote();
-    alert('All data has been cleared and reset to default quotes.');
-  }
+  reader.readAsText(file);
 }
 
 document.addEventListener('DOMContentLoaded', init);
