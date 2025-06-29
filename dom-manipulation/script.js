@@ -70,7 +70,7 @@ async function syncQuotes() {
   if (JSON.stringify(quotes) !== JSON.stringify(mergedQuotes)) {
     quotes = mergedQuotes;
     saveQuotes();
-    showNotification('Synced with server - ' + new Date().toLocaleTimeString());
+    showNotification('Quotes synced with server!');
     showRandomQuote();
   }
 }
