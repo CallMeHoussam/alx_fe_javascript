@@ -1,6 +1,9 @@
 let quotes = [];
 const STORAGE_KEY = 'quoteGeneratorData';
 const FILTER_KEY = 'quoteGeneratorFilter';
+const SERVER_URL = 'https://jsonplaceholder.typicode.com/posts';
+let lastSyncTime = null;
+let syncInterval = 30000; // 30 seconds
 
 const quoteDisplay = document.getElementById('quoteDisplay');
 const newQuoteBtn = document.getElementById('newQuote');
@@ -14,6 +17,83 @@ function init() {
   newQuoteBtn.addEventListener('click', showRandomQuote);
   addQuoteBtn.addEventListener('click', showAddForm);
   categoryFilter.addEventListener('change', filterQuotes);
+  setupSync();
+}
+
+function setupSync() {
+  syncWithServer();
+  setInterval(syncWithServer, syncInterval);
+}
+
+async function syncWithServer() {
+  try {
+    const response = await fetch(SERVER_URL);
+    if (!response.ok) throw new Error('Server error');
+    
+    const serverQuotes = await response.json();
+    const formattedServerQuotes = serverQuotes.map(post => ({
+      text: post.title,
+      category: 'server',
+      id: post.id,
+      serverVersion: true
+    }));
+    
+    const localQuotes = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const mergedQuotes = mergeQuotes(localQuotes, formattedServerQuotes);
+    
+    if (JSON.stringify(quotes) !== JSON.stringify(mergedQuotes)) {
+      quotes = mergedQuotes;
+      saveQuotes();
+      showSyncNotification('Data updated from server');
+    }
+    
+    lastSyncTime = new Date();
+  } catch (error) {
+    console.error('Sync failed:', error);
+    showSyncNotification('Sync failed: ' + error.message, true);
+  }
+}
+
+function mergeQuotes(localQuotes, serverQuotes) {
+  const localMap = new Map(localQuotes.map(q => [q.id || q.text, q]));
+  const serverMap = new Map(serverQuotes.map(q => [q.id || q.text, q]));
+  
+  const merged = [];
+  
+  // Add all server quotes (server takes precedence)
+  serverMap.forEach((quote, key) => {
+    merged.push({...quote});
+  });
+  
+  // Add local quotes that don't exist on server
+  localMap.forEach((quote, key) => {
+    if (!serverMap.has(key) {
+      merged.push({...quote});
+    }
+  });
+  
+  return merged;
+}
+
+function showSyncNotification(message, isError = false) {
+  const notification = document.createElement('div');
+  notification.style.position = 'fixed';
+  notification.style.bottom = '20px';
+  notification.style.right = '20px';
+  notification.style.padding = '10px 20px';
+  notification.style.backgroundColor = isError ? '#ff4444' : '#4CAF50';
+  notification.style.color = 'white';
+  notification.style.borderRadius = '4px';
+  notification.style.zIndex = '1000';
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 1s';
+    setTimeout(() => document.body.removeChild(notification), 1000);
+  }, 3000);
 }
 
 function loadQuotes() {
@@ -83,6 +163,7 @@ function filterQuotes() {
   quoteDisplay.innerHTML = `
     <blockquote>"${quote.text}"</blockquote>
     <p><em>— ${quote.category}</em></p>
+    ${quote.serverVersion ? '<p class="server-indicator">(From server)</p>' : ''}
   `;
 }
 
@@ -138,7 +219,7 @@ function importFromJsonFile(event) {
     try {
       const importedQuotes = JSON.parse(e.target.result);
       if (Array.isArray(importedQuotes)) {
-        quotes = importedQuotes;
+        quotes = mergeQuotes(quotes, importedQuotes);
         saveQuotes();
         showRandomQuote();
         alert(`Successfully imported ${importedQuotes.length} quotes!`);
