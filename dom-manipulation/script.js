@@ -8,6 +8,7 @@ let quotes = [
   { text: "Your time is limited, don't waste it living someone else's life.", category: "life" },
   { text: "Success is not final, failure is not fatal: It is the courage to continue that counts.", category: "motivation" }
 ];
+
 const quoteDisplay = document.getElementById('quoteDisplay');
 const newQuoteBtn = document.getElementById('newQuote');
 const categoryButtons = document.getElementById('categoryButtons');
@@ -20,7 +21,6 @@ function init() {
   showRandomQuote();
   newQuoteBtn.addEventListener('click', showRandomQuote);
   addQuoteBtn.addEventListener('click', showAddForm);
-  
   generateCategoryButtons();
 }
 
@@ -42,6 +42,7 @@ function showRandomQuote() {
     <p><em>— ${quote.category}</em></p>
   `;
 }
+
 function generateCategoryButtons() {
   const categories = [...new Set(quotes.map(quote => quote.category))];
   
@@ -101,7 +102,9 @@ function addQuote() {
   
   const newQuote = { text, category };
   quotes.push(newQuote);
+  
   hideAddForm();
+  
   const categories = [...new Set(quotes.map(quote => quote.category))];
   const existingButtons = [...categoryButtons.querySelectorAll('button')]
     .map(button => button.textContent);
@@ -121,4 +124,5 @@ function addQuote() {
   showRandomQuote();
   highlightCurrentCategoryButton();
 }
+
 document.addEventListener('DOMContentLoaded', init);
