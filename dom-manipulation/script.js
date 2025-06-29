@@ -7,13 +7,13 @@ const newQuoteBtn = document.getElementById('newQuote');
 const categoryFilter = document.createElement('select');
 categoryFilter.id = 'categoryFilter';
 
-// Initialize the application
 function init() {
   loadQuotes();
-  setupCategoryFilter();
+  setupFilter();
   showRandomQuote();
-  setupEventListeners();
+  newQuoteBtn.addEventListener('click', showRandomQuote);
   document.body.insertBefore(categoryFilter, quoteDisplay);
+  categoryFilter.addEventListener('change', filterQuotes);
 }
 
 function loadQuotes() {
@@ -32,31 +32,27 @@ function getDefaultQuotes() {
 
 function saveQuotes() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(quotes));
-  updateCategoryFilter();
+  populateCategories();
 }
 
-function setupCategoryFilter() {
-  updateCategoryFilter();
+function setupFilter() {
+  populateCategories();
   const savedFilter = localStorage.getItem(FILTER_KEY);
-  if (savedFilter && categoryFilter.querySelector(`option[value="${savedFilter}"]`)) {
+  if (savedFilter) {
     categoryFilter.value = savedFilter;
   }
 }
 
-function updateCategoryFilter() {
-  // Clear existing options
-  while (categoryFilter.firstChild) {
-    categoryFilter.removeChild(categoryFilter.firstChild);
-  }
-
-  // Add 'All' option
+function populateCategories() {
+  const uniqueCategories = [...new Set(quotes.map(quote => quote.category))];
+  categoryFilter.innerHTML = '';
+  
   const allOption = document.createElement('option');
   allOption.value = 'all';
   allOption.textContent = 'All Categories';
   categoryFilter.appendChild(allOption);
 
-  // Add category options
-  getUniqueCategories().forEach(category => {
+  uniqueCategories.forEach(category => {
     const option = document.createElement('option');
     option.value = category;
     option.textContent = category;
@@ -64,40 +60,25 @@ function updateCategoryFilter() {
   });
 }
 
-function getUniqueCategories() {
-  return [...new Set(quotes.map(quote => quote.category))];
-}
-
-function setupEventListeners() {
-  newQuoteBtn.addEventListener('click', showRandomQuote);
-  categoryFilter.addEventListener('change', handleCategoryFilterChange);
-}
-
-function handleCategoryFilterChange() {
+function filterQuotes() {
   const selectedCategory = categoryFilter.value;
   localStorage.setItem(FILTER_KEY, selectedCategory);
   showRandomQuote();
 }
 
 function showRandomQuote() {
-  const filteredQuotes = getFilteredQuotes();
-  
+  const selectedCategory = categoryFilter.value;
+  let filteredQuotes = selectedCategory === 'all' 
+    ? quotes 
+    : quotes.filter(quote => quote.category === selectedCategory);
+
   if (filteredQuotes.length === 0) {
-    quoteDisplay.innerHTML = `<p>No quotes available${categoryFilter.value === 'all' ? '' : ' in this category'}.</p>`;
+    quoteDisplay.innerHTML = `<p>No quotes available in this category.</p>`;
     return;
   }
 
   const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
-  displayQuote(filteredQuotes[randomIndex]);
-}
-
-function getFilteredQuotes() {
-  return categoryFilter.value === 'all' 
-    ? quotes 
-    : quotes.filter(quote => quote.category === categoryFilter.value);
-}
-
-function displayQuote(quote) {
+  const quote = filteredQuotes[randomIndex];
   quoteDisplay.innerHTML = `
     <blockquote>"${quote.text}"</blockquote>
     <p><em>— ${quote.category}</em></p>
@@ -105,18 +86,16 @@ function displayQuote(quote) {
 }
 
 function addQuote() {
-  const textElement = document.getElementById('newQuoteText');
-  const categoryElement = document.getElementById('newQuoteCategory');
-  
-  const text = textElement.value.trim();
-  const category = categoryElement.value.trim();
+  const text = document.getElementById('newQuoteText').value.trim();
+  const category = document.getElementById('newQuoteCategory').value.trim();
 
   if (text && category) {
     quotes.push({ text, category });
     saveQuotes();
-    textElement.value = '';
-    categoryElement.value = '';
+    document.getElementById('newQuoteText').value = '';
+    document.getElementById('newQuoteCategory').value = '';
     showRandomQuote();
   }
 }
+
 document.addEventListener('DOMContentLoaded', init);
