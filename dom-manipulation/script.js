@@ -17,6 +17,22 @@ function init() {
   addQuoteBtn.addEventListener('click', showAddForm);
   categoryFilter.addEventListener('change', filterQuotes);
   setupSync();
+
+  // Add export and import buttons if not present
+  if (!document.getElementById('exportQuotesBtn')) {
+    const exportBtn = document.createElement('button');
+    exportBtn.id = 'exportQuotesBtn';
+    exportBtn.textContent = 'Export Quotes';
+    exportBtn.onclick = exportToJsonFile;
+    document.body.appendChild(exportBtn);
+  }
+  if (!document.getElementById('importQuotesBtn')) {
+    const importBtn = document.createElement('button');
+    importBtn.id = 'importQuotesBtn';
+    importBtn.textContent = 'Import Quotes';
+    importBtn.onclick = triggerImportQuotes;
+    document.body.appendChild(importBtn);
+  }
 }
 
 function setupSync() {
@@ -150,19 +166,44 @@ function showRandomQuote() {
   filterQuotes();
 }
 
+function createAddQuoteForm() {
+  if (document.getElementById('dynamicAddQuoteForm')) return;
+  const form = document.createElement('form');
+  form.id = 'dynamicAddQuoteForm';
+  form.innerHTML = `
+    <input type="text" id="newQuoteText" placeholder="Quote text" required>
+    <input type="text" id="newQuoteCategory" placeholder="Category" required>
+    <button type="submit">Add Quote</button>
+    <button type="button" id="cancelAddQuote">Cancel</button>
+  `;
+  form.style.marginTop = '10px';
+  quoteFormContainer.appendChild(form);
+  form.onsubmit = async function(e) {
+    e.preventDefault();
+    await addQuote();
+  };
+  document.getElementById('cancelAddQuote').onclick = function() {
+    hideAddForm();
+  };
+  quoteFormContainer.style.display = 'block';
+}
+
 function showAddForm() {
+  createAddQuoteForm();
   quoteFormContainer.style.display = 'block';
 }
 
 function hideAddForm() {
   quoteFormContainer.style.display = 'none';
-  document.getElementById('newQuoteText').value = '';
-  document.getElementById('newQuoteCategory').value = '';
+  const form = document.getElementById('dynamicAddQuoteForm');
+  if (form) form.remove();
 }
 
 async function addQuote() {
-  const text = document.getElementById('newQuoteText').value.trim();
-  const category = document.getElementById('newQuoteCategory').value.trim();
+  const textInput = document.getElementById('newQuoteText');
+  const categoryInput = document.getElementById('newQuoteCategory');
+  const text = textInput ? textInput.value.trim() : '';
+  const category = categoryInput ? categoryInput.value.trim() : '';
   if (!text || !category) {
     alert('Please enter both quote text and category');
     return;
@@ -175,15 +216,33 @@ async function addQuote() {
   showRandomQuote();
 }
 
-function exportToJson() {
+function exportToJsonFile() {
   const dataStr = JSON.stringify(quotes, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
   const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
+  linkElement.setAttribute('href', url);
   linkElement.setAttribute('download', 'quotes.json');
   document.body.appendChild(linkElement);
   linkElement.click();
   document.body.removeChild(linkElement);
+  URL.revokeObjectURL(url);
+}
+
+function addImportQuotesInput() {
+  if (document.getElementById('importQuotesInput')) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.id = 'importQuotesInput';
+  input.style.display = 'none';
+  input.addEventListener('change', importFromJsonFile);
+  document.body.appendChild(input);
+}
+
+function triggerImportQuotes() {
+  addImportQuotesInput();
+  document.getElementById('importQuotesInput').click();
 }
 
 function importFromJsonFile(event) {
